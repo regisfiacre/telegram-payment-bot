@@ -27,36 +27,59 @@ app.post("/telegram", async (req, res) => {
 
   try {
 
-    // 🔹 1 SEMAINE
-    if (text.startsWith("/week")) {
-
-      const payment = await axios.post(
-        "https://api.nowpayments.io/v1/invoice",
-        {
-          price_amount: 10,
-          price_currency: "usd",
-          pay_currency: "usdttrc20",
-          order_id: String(chatId),
-          order_description: "7days"
-        },
-        {
-          headers: {
-            "x-api-key": NOWPAYMENTS_API_KEY,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    // 🔹 START → Menu avec bouton promo
+    if (text.startsWith("/start")) {
 
       await axios.post(`${TELEGRAM_API}/sendMessage`, {
         chat_id: chatId,
-        text: `💳 Abonnement 1 semaine (10 USDT) :\n${payment.data.invoice_url}`,
+        text: `🔥 ACCÈS VIP À VIE 🔥
+
+Prix normal : ~~45 USDT~~
+🎉 Promo actuelle : 30 USDT
+
+⚠️ Offre limitée.
+
+Clique sur le bouton ci-dessous pour accéder au canal VIP.`,
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🚀 Profiter de la promo (30 USDT)",
+                callback_data: "buy_vip"
+              }
+            ]
+          ]
+        }
       });
 
       return res.sendStatus(200);
     }
 
-    // 🔹 1 MOIS
-    if (text.startsWith("/month")) {
+  } catch (error) {
+    console.error("Erreur Telegram :", error.response?.data || error.message);
+  }
+
+  res.sendStatus(200);
+});
+
+/* =========================
+   CALLBACK BUTTON HANDLER
+========================= */
+
+app.post("/telegram", async (req, res) => {
+
+  const callback = req.body.callback_query;
+
+  if (!callback) {
+    return res.sendStatus(200);
+  }
+
+  const chatId = callback.message.chat.id;
+
+  if (callback.data === "buy_vip") {
+
+    try {
 
       const payment = await axios.post(
         "https://api.nowpayments.io/v1/invoice",
@@ -65,7 +88,7 @@ app.post("/telegram", async (req, res) => {
           price_currency: "usd",
           pay_currency: "usdttrc20",
           order_id: String(chatId),
-          order_description: "30days"
+          order_description: "lifetime"
         },
         {
           headers: {
@@ -77,30 +100,16 @@ app.post("/telegram", async (req, res) => {
 
       await axios.post(`${TELEGRAM_API}/sendMessage`, {
         chat_id: chatId,
-        text: `💳 Abonnement 1 mois (30 USDT) :\n${payment.data.invoice_url}`,
+        text: `💳 Paiement sécurisé :
+
+${payment.data.invoice_url}
+
+Après confirmation, tu recevras ton accès VIP à vie.`
       });
 
-      return res.sendStatus(200);
+    } catch (error) {
+      console.error("Erreur paiement :", error.response?.data || error.message);
     }
-
-    // 🔹 START (menu simple)
-    if (text.startsWith("/start")) {
-
-      await axios.post(`${TELEGRAM_API}/sendMessage`, {
-        chat_id: chatId,
-        text: `Bienvenue 👑
-
-Choisis ton abonnement :
-
-/week → 1 semaine (10 USDT)
-/month → 1 mois (30 USDT)`
-      });
-
-      return res.sendStatus(200);
-    }
-
-  } catch (error) {
-    console.error("Erreur Telegram :", error.response?.data || error.message);
   }
 
   res.sendStatus(200);
@@ -122,7 +131,7 @@ app.post("/payment", async (req, res) => {
 
   try {
 
-    // 🔒 Vérifier si déjà membre du canal
+    // 🔒 Vérifier si déjà membre
     const memberCheck = await axios.get(
       `${TELEGRAM_API}/getChatMember`,
       {
@@ -136,12 +145,12 @@ app.post("/payment", async (req, res) => {
     const status = memberCheck.data.result.status;
 
     if (status === "member" || status === "administrator" || status === "creator") {
-      console.log("Utilisateur déjà abonné :", userId);
+      console.log("Déjà membre :", userId);
       return res.sendStatus(200);
     }
 
   } catch (err) {
-    // S'il n'est pas membre, Telegram renvoie une erreur → normal
+    // Normal si pas membre
   }
 
   try {
@@ -157,24 +166,26 @@ app.post("/payment", async (req, res) => {
 
     const inviteLink = invite.data.result.invite_link;
 
-    // 📩 Envoyer accès VIP
+    // 📩 Envoyer accès
     await axios.post(
       `${TELEGRAM_API}/sendMessage`,
       {
         chat_id: userId,
         text: `✅ Paiement confirmé !
 
-Voici ton accès VIP :
+🎉 Bienvenue dans le VIP.
+
+Voici ton accès à vie :
 ${inviteLink}
 
 ⚠️ Lien valable une seule fois`
       }
     );
 
-    console.log("Accès VIP envoyé à", userId);
+    console.log("Accès envoyé à", userId);
 
   } catch (error) {
-    console.error("Erreur paiement :", error.response?.data || error.message);
+    console.error("Erreur accès VIP :", error.response?.data || error.message);
   }
 
   res.sendStatus(200);
