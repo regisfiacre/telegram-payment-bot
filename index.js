@@ -20,7 +20,7 @@ app.post("/telegram", async (req, res) => {
     const text = message.text;
 
     // 🔹 COMMANDE /start
-    if (text === "/start") {
+    if (text && text.startsWith("/start")) {
 
       const payment = await axios.post(
         "https://api.nowpayments.io/v1/invoice",
@@ -46,7 +46,7 @@ app.post("/telegram", async (req, res) => {
     }
 
     // 🔥 NOUVELLE COMMANDE /testvip
-    if (text === "/testvip") {
+    if (text && text.startsWith("/testvip")) {
       try {
         const invite = await axios.post(
           `${TELEGRAM_API}/createChatInviteLink`,
