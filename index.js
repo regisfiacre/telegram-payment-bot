@@ -25,14 +25,17 @@ app.post("/telegram", async (req, res) => {
 
       try {
         const payment = await axios.post(
-          "https://api.nowpayments.io/v1/invoice",
-          {
-            price_amount: 30,
-            price_currency: "usd",
-            pay_currency: "usdttrc20",
-            order_id: String(chatId),
-            order_description: "annual_vip"
-          },
+  "https://api.nowpayments.io/v1/invoice",
+  {
+    price_amount: 30,
+    price_currency: "usd",
+
+    // ❌ ON NE FORCE PLUS LA CRYPTO
+    // pay_currency supprimé = client choisit
+
+    order_id: String(chatId),
+    order_description: "annual_vip"
+  },
           {
             headers: {
               "x-api-key": NOWPAYMENTS_API_KEY,
