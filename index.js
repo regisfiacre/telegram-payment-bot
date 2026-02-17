@@ -51,28 +51,35 @@ app.post("/payment", async (req, res) => {
   if (payment.payment_status === "finished") {
   const userId = payment.order_id;
 
-  // 1️⃣ Créer un lien d’invitation unique
-  const invite = await axios.post(
-    `${TELEGRAM_API}/createChatInviteLink`,
-    {
-      chat_id: CHANNEL_ID,
-      member_limit: 1
-    }
-  );
+  try {
+    // 1️⃣ Créer un lien d'invitation unique (1 seule utilisation)
+    const invite = await axios.post(
+      `${TELEGRAM_API}/createChatInviteLink`,
+      {
+        chat_id: CHANNEL_ID,
+        member_limit: 1
+      }
+    );
 
-  const inviteLink = invite.data.result.invite_link;
+    const inviteLink = invite.data.result.invite_link;
 
-  // 2️⃣ Envoyer le lien à l'utilisateur
-  await axios.post(
-    `${TELEGRAM_API}/sendMessage`,
-    {
-      chat_id: userId,
-      text: `✅ Paiement confirmé !
+    // 2️⃣ Envoyer le lien VIP à l'utilisateur
+    await axios.post(
+      `${TELEGRAM_API}/sendMessage`,
+      {
+        chat_id: userId,
+        text: `✅ Paiement confirmé !
 
 Voici ton accès VIP :
 ${inviteLink}`
-    }
-  );
+      }
+    );
+
+    console.log("Lien VIP envoyé à", userId);
+
+  } catch (error) {
+    console.error("Erreur création lien VIP :", error.response?.data || error.message);
+  }
 }
 
   res.sendStatus(200);
