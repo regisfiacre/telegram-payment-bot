@@ -49,13 +49,31 @@ app.post("/payment", async (req, res) => {
   const payment = req.body;
 
   if (payment.payment_status === "finished") {
-    const userId = payment.order_id;
+  const userId = payment.order_id;
 
-    await axios.post(`${TELEGRAM_API}/unbanChatMember`, {
+  // 1️⃣ Créer un lien d’invitation unique
+  const invite = await axios.post(
+    `${TELEGRAM_API}/createChatInviteLink`,
+    {
       chat_id: CHANNEL_ID,
-      user_id: userId,
-    });
-  }
+      member_limit: 1
+    }
+  );
+
+  const inviteLink = invite.data.result.invite_link;
+
+  // 2️⃣ Envoyer le lien à l'utilisateur
+  await axios.post(
+    `${TELEGRAM_API}/sendMessage`,
+    {
+      chat_id: userId,
+      text: `✅ Paiement confirmé !
+
+Voici ton accès VIP :
+${inviteLink}`
+    }
+  );
+}
 
   res.sendStatus(200);
 });
