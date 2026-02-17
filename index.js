@@ -14,7 +14,8 @@ const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
 // Endpoint Telegram webhook
 app.post("/telegram", async (req, res) => {
   const message = req.body.message;
-
+ console.log("Texte reçu:", message.text);
+  
   if (message) {
     const chatId = message.chat.id;
     const text = message.text;
