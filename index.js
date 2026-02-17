@@ -23,51 +23,54 @@ app.post("/telegram", async (req, res) => {
 
     if (text && text.startsWith("/start")) {
 
-      const payment = await axios.post(
-        "https://api.nowpayments.io/v1/invoice",
-        {
-          price_amount: 30,
-          price_currency: "usd",
-          pay_currency: "usdttrc20",
-          order_id: String(chatId),
-          order_description: "annual_vip"
-        },
-        {
-          headers: {
-            "x-api-key": NOWPAYMENTS_API_KEY,
-            "Content-Type": "application/json",
+      try {
+        const payment = await axios.post(
+          "https://api.nowpayments.io/v1/invoice",
+          {
+            price_amount: 30,
+            price_currency: "usd",
+            pay_currency: "usdttrc20",
+            order_id: String(chatId),
+            order_description: "annual_vip"
           },
-        }
-      );
+          {
+            headers: {
+              "x-api-key": NOWPAYMENTS_API_KEY,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-      const invoiceUrl = payment.data.invoice_url;
+        const invoiceUrl = payment.data.invoice_url;
 
-      await axios.post(`${TELEGRAM_API}/sendMessage`, {
-        chat_id: chatId,
-        text: `💎 ACCÈS VIP 💎
+        await axios.post(`${TELEGRAM_API}/sendMessage`, {
+          chat_id: chatId,
+          text: `💎 ACCÈS VIP 💎
 
-🎉 Offre spéciale de lancement : 30 USDT  
+🎉 Offre spéciale : 30 USDT  
 (Prix normal : 45 USDT)
 
 ━━━━━━━━━━━━━━━━━━
-📈 Contenu exclusif réservé aux membres  
-🔒 Accès privé pendant 12 mois  
-⏳ La promotion expire bientôt  
+📈 Contenu exclusif  
+🔒 Accès privé 12 mois  
 ━━━━━━━━━━━━━━━━━━
 
-Sécurise ta place dès maintenant :
+Paye ici :
 
 ${invoiceUrl}
 
-━━━━━━━━━━━━━━━━━━
+⚠️ Après paiement, l'accès est automatique.`,
+        });
 
-⚠️ Une fois la promotion terminée, le prix repassera définitivement à 45 USDT.`,
-      });
+      } catch (error) {
+        console.error("Erreur création invoice:", error.response?.data || error.message);
+      }
     }
   }
 
   res.sendStatus(200);
 });
+
 
 // =============================
 // NOWPAYMENTS WEBHOOK
@@ -80,18 +83,24 @@ app.post("/payment", async (req, res) => {
     const userId = payment.order_id;
 
     try {
-      // 🔹 1. Créer lien invitation unique
+
+      // Expiration 1 an
+      const oneYear = 365 * 24 * 60 * 60;
+      const expireDate = Math.floor(Date.now() / 1000) + oneYear;
+
+      // Lien unique valable 1 an
       const invite = await axios.post(
         `${TELEGRAM_API}/createChatInviteLink`,
         {
           chat_id: CHANNEL_ID,
-          member_limit: 1
+          member_limit: 1,
+          expire_date: expireDate
         }
       );
 
       const inviteLink = invite.data.result.invite_link;
 
-      // 🔹 2. Envoyer message premium confirmation
+      // Message confirmation
       await axios.post(
         `${TELEGRAM_API}/sendMessage`,
         {
@@ -101,40 +110,27 @@ app.post("/payment", async (req, res) => {
 Bienvenue dans le VIP 👑
 
 ━━━━━━━━━━━━━━━━━━
-🔒 Ton accès est valable pendant 12 mois.
-📅 Expiration automatique dans 1 an.
+🔒 Accès valable 12 mois
 ━━━━━━━━━━━━━━━━━━
 
-Voici ton lien privé d’accès :
+Voici ton lien privé :
 
 ${inviteLink}
 
-⚠️ Ce lien est personnel et valable pour une seule utilisation.`,
+⚠️ Lien personnel, utilisable une seule fois.`,
         }
       );
 
       console.log("Accès VIP envoyé à", userId);
 
-      // 🔹 3. Programmer bannissement automatique après 365 jours
-      const oneYear = 365 * 24 * 60 * 60;
-      const expireDate = Math.floor(Date.now() / 1000) + oneYear;
-
-      await axios.post(
-        `${TELEGRAM_API}/banChatMember`,
-        {
-          chat_id: CHANNEL_ID,
-          user_id: userId,
-          until_date: expireDate
-        }
-      );
-
     } catch (error) {
-      console.error("Erreur paiement :", error.response?.data || error.message);
+      console.error("Erreur paiement:", error.response?.data || error.message);
     }
   }
 
   res.sendStatus(200);
 });
+
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("Bot running...");
